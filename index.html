@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+        }
+        button:hover {
+            background-color: #218838;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+        }
+        .holiday-list {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            max-width: 200px;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .checkbox-container input {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Date Calculator</h2>
+    
+    <label for="startDate">Starting Date:</label>
+    <input type="date" id="startDate" placeholder="Enter starting date">
+    
+    <label for="daysToAdd">Number of Days to Add:</label>
+    <input type="number" id="daysToAdd" placeholder="Enter number of days">
+    
+    <!-- Checkbox for mandays (weekdays only) -->
+    <div class="checkbox-container">
+        <label for="isManDay">Is this a manday (weekdays only)?</label>
+        <input type="checkbox" id="isManDay">
+    </div>
+
+    <!-- Checkbox for avoiding holidays -->
+    <div class="checkbox-container">
+        <label for="avoidHolidays">Should we avoid holidays?</label>
+        <input type="checkbox" id="avoidHolidays">
+    </div>
+    
+    <button onclick="calculateDates()">Calculate Final Date</button>
+    
+    <div class="result">
+        <p id="finalDate"></p>
+    </div>
+</div>
+
+<!-- Holidays list on the right side -->
+<div class="holiday-list">
+    <h3>Holidays</h3>
+    <ul>
+        <li>New Year Day: 1-Jan-25</li>
+        <li>Republic Day: 26-Jan-25</li>
+        <li>Holi - 2nd day: 14-Mar-25</li>
+        <li>Ramzan ID: 31-Mar-25</li>
+        <li>Mahavir Jayanti: 10-Apr-25</li>
+        <li>Labour Day: 1-May-25</li>
+        <li>Independence Day: 15-Aug-25</li>
+        <li>Ganesh Chaturthi: 27-Aug-25</li>
+        <li>Gandhi Jayanti/Dussehra: 2-Oct-25</li>
+        <li>Diwali: 20-Oct-25</li>
+        <li>Diwali: 21-Oct-25</li>
+        <li>Christmas: 25-Dec-25</li>
+    </ul>
+</div>
+
+<script>
+    const holidays = [
+        '2025-01-01',
+        '2025-01-26',
+        '2025-03-14',
+        '2025-03-31',
+        '2025-04-10',
+        '2025-05-01',
+        '2025-08-15',
+        '2025-08-27',
+        '2025-10-02',
+        '2025-10-20',
+        '2025-10-21',
+        '2025-12-25'
+    ];
+
+    function calculateDates() {
+        const startDateInput = document.getElementById("startDate").value;
+        const daysToAdd = parseInt(document.getElementById("daysToAdd").value);
+        const isManDay = document.getElementById("isManDay").checked;
+        const avoidHolidays = document.getElementById("avoidHolidays").checked;
+
+        if (!startDateInput || isNaN(daysToAdd)) {
+            alert("Please enter a valid date and number of days.");
+            return;
+        }
+
+        // Parse the input date
+        const startDate = new Date(startDateInput);
+        let finalDate;
+
+        if (isManDay) {
+            // If "manday" is checked, add only weekdays (consider the starting date as well)
+            finalDate = addDaysIncludingStartDateIgnoringWeekends(startDate, daysToAdd, avoidHolidays);
+        } else {
+            // Otherwise, just add the total number of days (considering the starting date)
+            finalDate = new Date(startDate);
+            finalDate.setDate(finalDate.getDate() + (daysToAdd - 1)); // Subtracting 1 to include the starting date
+
+            // Avoid holidays if the checkbox is checked
+            if (avoidHolidays) {
+                finalDate = avoidHolidayDates(finalDate, startDate, daysToAdd);
+            }
+
+            // Ensure the final date is not a weekend (Saturday or Sunday)
+            finalDate = avoidWeekend(finalDate);
+        }
+
+        // Display the final date
+        document.getElementById("finalDate").innerHTML = `Final date: ${formatDate(finalDate)}`;
+    }
+
+    // Function to format the date as dd-mm-yyyy
+    function formatDate(date) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+
+    // Function to add days while skipping weekends and holidays, including the starting date
+    function addDaysIncludingStartDateIgnoringWeekends(startDate, daysToAdd, avoidHolidays) {
+        let resultDate = new Date(startDate);
+        let addedDays = 0;
+
+        while (addedDays < daysToAdd) {
+            if (resultDate.getDay() !== 0 && resultDate.getDay() !== 6 && (!avoidHolidays || !isHoliday(resultDate))) {
+                addedDays++;
+            }
+            if (addedDays < daysToAdd) { // Move to next day only if we haven't added enough days yet
+                resultDate.setDate(resultDate.getDate() + 1);
+            }
+        }
+
+        return resultDate;
+    }
+
+    // Function to check if a date is a holiday
+    function isHoliday(date) {
+        const formattedDate = date.toISOString().split('T')[0];
+        return holidays.includes(formattedDate);
+    }
+
+    // Function to avoid holiday dates
+    function avoidHolidayDates(finalDate, startDate, daysToAdd) {
+        let resultDate = new Date(finalDate);
+        for (let i = 0; i < holidays.length; i++) {
+            const holidayDate = new Date(holidays[i]);
+            if (holidayDate >= startDate && holidayDate <= resultDate) {
+                resultDate.setDate(resultDate.getDate() + 1); // Push final date ahead by one day if it falls on a holiday
+            }
+        }
+        return resultDate;
+    }
+
+    // Function to avoid weekends (Saturday or Sunday) if "manday" is not checked
+    function avoidWeekend(date) {
+        if (date.getDay() === 6) {
+            // If it's Saturday, push to Monday
+            date.setDate(date.getDate() + 2);
+        } else if (date.getDay() === 0) {
+            // If it's Sunday, push to Monday
+            date.setDate(date.getDate() + 1);
+        }
+        return date;
+    }
+</script>
+
+</body>
+</html>
